@@ -11,7 +11,7 @@ class MyTextDetectorPainter extends CustomPainter {
   MyTextDetectorPainter(
       this.recognisedText, this.absoluteImageSize, this.rotation);
 
-  final RecognisedText recognisedText;
+  final List<TextElement> recognisedText;
   final Size absoluteImageSize;
   final InputImageRotation rotation;
 
@@ -24,56 +24,55 @@ class MyTextDetectorPainter extends CustomPainter {
 
     final Paint background = Paint()..color = Color(0x99000000);
     final Map<String, String> dict = HashMap();
-    dict.addAll({"Abitur": "Abitur is defined", "Kapitel": "Kapitel is defined.", "Logarithmusfunktionen": "log is defined"});
-    
-    for (final textBlock in recognisedText.blocks) {
-      for (final textLine in textBlock.lines) {
-        var words = textLine.elements;
-        words.retainWhere((element) => dict.containsKey(element.text));
-        for (final textWord in words) {
-          final ParagraphBuilder builder = ParagraphBuilder(
-            ParagraphStyle(
-                textAlign: TextAlign.left,
-                fontSize: 16,
-                textDirection: TextDirection.ltr),
-          );
-          builder.pushStyle(
-              ui.TextStyle(
-                  color: Colors.lightGreenAccent, background: background));
-          builder.addText('${textWord.text}');
-          builder.pop();
+    dict.addAll({
+      "Abitur": "Abitur is defined",
+      "Kapitel": "Kapitel is defined.",
+      "Logarithmusfunktionen": "log is defined"
+    });
 
-          final left =
+    var words = recognisedText;
+    words.retainWhere((element) => dict.containsKey(element.text));
+    for (final textWord in words) {
+      final ParagraphBuilder builder = ParagraphBuilder(
+        ParagraphStyle(
+            textAlign: TextAlign.left,
+            fontSize: 16,
+            textDirection: TextDirection.ltr),
+      );
+      builder.pushStyle(
+          ui.TextStyle(color: Colors.lightGreenAccent, background: background));
+      builder.addText('${textWord.text}');
+      builder.pop();
+
+      final left =
           translateX(textWord.rect.left, rotation, size, absoluteImageSize);
-          final top =
+      final top =
           translateY(textWord.rect.top, rotation, size, absoluteImageSize);
-          final right =
+      final right =
           translateX(textWord.rect.right, rotation, size, absoluteImageSize);
-          final bottom =
+      final bottom =
           translateY(textWord.rect.bottom, rotation, size, absoluteImageSize);
 
-          canvas.drawRect(
-            Rect.fromLTRB(left, top, right, bottom),
-            paint,
-          );
+      canvas.drawRect(
+        Rect.fromLTRB(left, top, right, bottom),
+        paint,
+      );
 
-          canvas.drawParagraph(
-            builder.build()
-              ..layout(ParagraphConstraints(
-                width: right - left,
-              )),
-            Offset(left, top),
-          );
-        }
-      }
+      canvas.drawParagraph(
+        builder.build()
+          ..layout(ParagraphConstraints(
+            width: right - left,
+          )),
+        Offset(left, top),
+      );
     }
-
   }
 
   @override
   bool shouldRepaint(MyTextDetectorPainter oldDelegate) {
     // TODO: return false if 3 words in new and old text are the same
     // TODO: actually in the case of 3 equal words sets of boxes should be merged
-    return oldDelegate.recognisedText != recognisedText;
+    return true;
+    //return oldDelegate.recognisedText != recognisedText;
   }
 }
