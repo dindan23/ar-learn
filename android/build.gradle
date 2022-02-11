@@ -64,4 +64,7 @@ dependencies {
     implementation 'com.google.mlkit:text-recognition-japanese:16.0.0-beta1'
     implementation 'com.google.mlkit:text-recognition-korean:16.0.0-beta1'
 
+    // required to avoid crash on Android 12 API 31
+    implementation 'androidx.work:work-runtime-ktx:2.7.0'
+
 }
