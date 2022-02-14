@@ -33,6 +33,9 @@ class MyTextDetectorPainter extends CustomPainter {
     var words = recognisedText;
     words.retainWhere((element) => dict.containsKey(element.text));
     for (final textWord in words) {
+      final TextButton tb = TextButton(child: const Text('keyword'), onPressed: () => {},autofocus: false);
+      final Stack st = Stack(children: [Positioned(child: tb)]);
+
       final ParagraphBuilder builder = ParagraphBuilder(
         ParagraphStyle(
             textAlign: TextAlign.left,
