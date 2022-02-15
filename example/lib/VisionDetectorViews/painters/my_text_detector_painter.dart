@@ -26,12 +26,12 @@ class MyTextDetectorPainter extends CustomPainter {
       ..color = Colors.lightGreenAccent;
 
     final Paint background = Paint()..color = Color(0x99000000);
-    final Map<String, String> dict = HashMap();
-    dict.addAll({
-      "Abitur": "Abitur is defined",
+    final Map<String, String> dict = {
+      "Analysis": "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
+      "Abitur": "Abitur is defined.",
       "Kapitel": "Kapitel is defined.",
-      "Logarithmusfunktionen": "log is defined"
-    });
+      "Logarithmusfunktionen": "Durch die Umkehrung der Exponentialfunktion f(x) = a^x (a > 0) ergibt sich die Logarithmusfunktion: f(x) = log_a(x)."
+    };
 
     var words = recognisedText;
     words.retainWhere((element) => dict.containsKey(element.text));

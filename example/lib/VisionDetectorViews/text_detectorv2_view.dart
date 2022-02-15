@@ -25,11 +25,13 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   List<TextElement> oldWBoxes = [];
   int recCount = 0;
   final Map<String, String> dict = {
-    "Abitur": "Abitur is defined",
+    "Analysis": "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
+    "Abitur": "Abitur is defined.",
     "Kapitel": "Kapitel is defined.",
-    "Logarithmusfunktionen": "log is defined"
+    "Logarithmusfunktionen": "Durch die Umkehrung der Exponentialfunktion f(x) = a^x (a > 0) ergibt sich die Logarithmusfunktion: f(x) = log_a(x)."
   };
   List<Widget> widgets = <Widget>[];
+  late InputImage inputImg;
 
   String titleVar = 'NOT FOUND';
 
@@ -74,11 +76,12 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       title: titleVar,
       customPaint: customPaint,
       onImage: (inputImage) {
+        inputImg = inputImage;
         processImage(inputImage);
       },
     )];
     for (final wBox in wBoxes) {
-      widgets.add(Positioned(top: wBox.rect.top, left: wBox.rect.left, width: wBox.rect.width, height: wBox.rect.height,
+      widgets.add(Positioned(top: translateY(wBox.rect.top, inputImg.inputImageData!.imageRotation, inputImg.inputImageData!.size, inputImg.inputImageData!.size), left: translateX(wBox.rect.left, inputImg.inputImageData!.imageRotation, inputImg.inputImageData!.size, inputImg.inputImageData!.size), width: wBox.rect.width, height: wBox.rect.height,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(textStyle: const TextStyle(fontSize: 14)),
           onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
@@ -90,6 +93,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   bool fuzzyContains(Map<String, String> dict, String word) {
     final bookList = [
+      'Analysis',
       'Abitur',
       'Kapitel',
       'Logarithmusfunktionen',
