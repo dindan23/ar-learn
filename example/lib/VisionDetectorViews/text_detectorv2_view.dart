@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:vector_math/vector_math.dart';
 import 'package:fuzzy/fuzzy.dart';
+import 'painters/coordinates_translator.dart';
+
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
@@ -27,6 +29,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
     "Kapitel": "Kapitel is defined.",
     "Logarithmusfunktionen": "log is defined"
   };
+  List<Widget> widgets = <Widget>[];
 
   String titleVar = 'NOT FOUND';
 
@@ -38,22 +41,51 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-    CameraView(
+
+
+    Future<void> _showMyDialog(String word, String definition) async {
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: false, // user must tap button!
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(word),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text(definition),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Ok'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    widgets = <Widget>[CameraView(
       title: titleVar,
       customPaint: customPaint,
       onImage: (inputImage) {
-        /* TODO: add inputImage to frameQueue
-         * Call processImage and pass frameQueue together with inputImage
-         * If in processImage() isBusy is false,
-         * then the bestFrame in frameQueue can be fetched and the frameQueue can be emptied again
-         * Otherwise, if frameQueue is empty, then just use the inputImage
-         */
         processImage(inputImage);
       },
-    ),
-      Positioned(top: 150, left: 20, width: 100, height: 50,child: TextButton(onPressed: () => {},child: const Text("HELLO"),),)]);
+    )];
+    for (final wBox in wBoxes) {
+      widgets.add(Positioned(top: wBox.rect.top, left: wBox.rect.left, width: wBox.rect.width, height: wBox.rect.height,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(textStyle: const TextStyle(fontSize: 14)),
+          onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
+          child: Text(wBox.text),)));
+    }
+    return Stack(
+      children: widgets);
   }
 
   bool fuzzyContains(Map<String, String> dict, String word) {
@@ -164,7 +196,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       final painter = MyTextDetectorPainter(
           wBoxes,
           inputImage.inputImageData!.size,
-          inputImage.inputImageData!.imageRotation);
+          inputImage.inputImageData!.imageRotation, context);
 
       customPaint = CustomPaint(painter: painter);
     } else {

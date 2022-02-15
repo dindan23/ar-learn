@@ -9,11 +9,14 @@ import 'coordinates_translator.dart';
 
 class MyTextDetectorPainter extends CustomPainter {
   MyTextDetectorPainter(
-      this.recognisedText, this.absoluteImageSize, this.rotation);
+      this.recognisedText, this.absoluteImageSize, this.rotation, this.context);
 
   final List<TextElement> recognisedText;
   final Size absoluteImageSize;
   final InputImageRotation rotation;
+  final BuildContext context;
+
+
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -33,7 +36,7 @@ class MyTextDetectorPainter extends CustomPainter {
     var words = recognisedText;
     words.retainWhere((element) => dict.containsKey(element.text));
     for (final textWord in words) {
-      final TextButton tb = TextButton(child: const Text('keyword'), onPressed: () => {},autofocus: false);
+      final TextButton tb = TextButton(child: const Text('keyword'), onPressed: () => print("PRESSED"),autofocus: false);
       final Stack st = Stack(children: [Positioned(child: tb)]);
 
       final ParagraphBuilder builder = ParagraphBuilder(
