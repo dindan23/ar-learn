@@ -38,7 +38,9 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   @override
   Widget build(BuildContext context) {
-    return CameraView(
+    return Stack(
+      children: [
+    CameraView(
       title: titleVar,
       customPaint: customPaint,
       onImage: (inputImage) {
@@ -50,7 +52,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
          */
         processImage(inputImage);
       },
-    );
+    ),
+      Positioned(top: 150, left: 20, width: 100, height: 50,child: TextButton(onPressed: () => {},child: const Text("HELLO"),),)]);
   }
 
   bool fuzzyContains(Map<String, String> dict, String word) {
