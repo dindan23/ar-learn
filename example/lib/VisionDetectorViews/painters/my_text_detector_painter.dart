@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:ui';
 import 'dart:ui' as ui;
 
@@ -36,7 +35,7 @@ class MyTextDetectorPainter extends CustomPainter {
     var words = recognisedText;
     words.retainWhere((element) => dict.containsKey(element.text));
     for (final textWord in words) {
-      final TextButton tb = TextButton(child: const Text('keyword'), onPressed: () => print("PRESSED"),autofocus: false);
+      final TextButton tb = TextButton(child: const Text('keyword'), onPressed: () => print("PRESSED2"),autofocus: false);
       final Stack st = Stack(children: [Positioned(child: tb)]);
 
       final ParagraphBuilder builder = ParagraphBuilder(
@@ -59,6 +58,15 @@ class MyTextDetectorPainter extends CustomPainter {
       final bottom =
           translateY(textWord.rect.bottom, rotation, size, absoluteImageSize);
 
+      /*
+      print("translated: ");
+      print(textWord.text);
+      print(left);
+      print(top);
+      print(right);
+      print(bottom);
+      */
+      /*
       canvas.drawRect(
         Rect.fromLTRB(left, top, right, bottom),
         paint,
@@ -71,6 +79,8 @@ class MyTextDetectorPainter extends CustomPainter {
           )),
         Offset(left, top),
       );
+
+       */
     }
   }
 

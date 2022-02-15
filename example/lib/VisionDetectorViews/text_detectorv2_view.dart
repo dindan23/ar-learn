@@ -1,11 +1,11 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
+
 import 'package:google_ml_kit/google_ml_kit.dart';
-import 'package:vector_math/vector_math.dart';
+import 'package:vector_math/vector_math.dart' as vec;
 import 'package:fuzzy/fuzzy.dart';
 import 'painters/coordinates_translator.dart';
-
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
@@ -23,17 +23,19 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   List<TextElement> wBoxes = [];
   List<TextElement> oldAllBoxes = [];
   List<TextElement> oldWBoxes = [];
-  int recCount = 0;
+  int recCount = 0; // number of recognized words (wBoxes)
   final Map<String, String> dict = {
-    "Analysis": "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
+    "Analysis":
+        "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
     "Abitur": "Abitur is defined.",
     "Kapitel": "Kapitel is defined.",
-    "Logarithmusfunktionen": "Durch die Umkehrung der Exponentialfunktion f(x) = a^x (a > 0) ergibt sich die Logarithmusfunktion: f(x) = log_a(x)."
+    "Logarithmusfunktionen":
+        "Durch die Umkehrung der Exponentialfunktion f(x) = a^x (a > 0) ergibt sich die Logarithmusfunktion: f(x) = log_a(x)."
   };
   List<Widget> widgets = <Widget>[];
   late InputImage inputImg;
 
-  String titleVar = 'NOT FOUND';
+  String titleVar = 'Sucht nach Definitionen';
 
   @override
   void dispose() async {
@@ -43,12 +45,10 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   @override
   Widget build(BuildContext context) {
-
-
     Future<void> _showMyDialog(String word, String definition) async {
       return showDialog<void>(
         context: context,
-        barrierDismissible: false, // user must tap button!
+        barrierDismissible: true, // if false: user must tap button
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text(word),
@@ -72,37 +72,53 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       );
     }
 
-    widgets = <Widget>[CameraView(
+    final mediaQueryData = MediaQuery.of(context);
+    final size = mediaQueryData.size;
+
+    final camView = CameraView(
       title: titleVar,
       customPaint: customPaint,
       onImage: (inputImage) {
         inputImg = inputImage;
         processImage(inputImage);
       },
-    )];
+    );
+
+    widgets = <Widget>[
+      camView
+    ];
+
     for (final wBox in wBoxes) {
-      widgets.add(Positioned(top: translateY(wBox.rect.top, inputImg.inputImageData!.imageRotation, inputImg.inputImageData!.size, inputImg.inputImageData!.size), left: translateX(wBox.rect.left, inputImg.inputImageData!.imageRotation, inputImg.inputImageData!.size, inputImg.inputImageData!.size), width: wBox.rect.width, height: wBox.rect.height,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(textStyle: const TextStyle(fontSize: 14)),
-          onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
-          child: Text(wBox.text),)));
+      print("wBox: ");
+      print(wBox.text);
+      print(wBox.rect.left);
+      print(wBox.rect.top);
+      print(wBox.rect.right);
+      print(wBox.rect.bottom);
+      widgets.add(Positioned(
+          left: wBox.rect.left * 1.71,
+          top: AppBar().preferredSize.height + (wBox.rect.top + (wBox.rect.bottom - wBox.rect.top) / 2) * 1.88,
+          //width: 1.71 * (wBox.rect.right - wBox.rect.left),
+          //height: 1.88 * (wBox.rect.bottom - wBox.rect.top),
+          child: OutlinedButton(
+            onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
+            child: Text(wBox.text),
+            style: OutlinedButton.styleFrom(
+              primary: Colors.lightGreenAccent,
+              backgroundColor: Color.fromRGBO(0, 0, 0, 0.3),
+            ),
+          )));
     }
-    return Stack(
-      children: widgets);
+    return Stack(alignment: Alignment.topLeft, children: widgets);
   }
 
   bool fuzzyContains(Map<String, String> dict, String word) {
-    final bookList = [
-      'Analysis',
-      'Abitur',
-      'Kapitel',
-      'Logarithmusfunktionen',
-    ];
+    final bookList = dict.keys.toList(growable: false);
     final fuse = Fuzzy(
       bookList,
       options: FuzzyOptions(
         tokenize: false,
-        threshold: 0.15,
+        threshold: 0.05,
       ),
     );
 
@@ -139,13 +155,13 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
         allBoxes.addAll(words);
         // TODO: do SPELL CHECKING here according to our dictionary
         words.retainWhere((element) => dict.containsKey(
-            element.text)); // || fuzzyContains(dict, element.text));
+            element.text)); //|| fuzzyContains(dict, element.text));
         for (final textWord in words) {
           wBoxes.add(textWord);
         }
       }
     }
-    // TODO: then analyse allboxes: if 3 are the same, we conclude that it's the same frame
+    // TODO: then analyse allboxes: if 5 are the same, we conclude that it's the same frame
     bool isSameFrame = false;
     int simCount = 0;
     int count = 0;
@@ -153,17 +169,25 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       count += 1;
       if (count > 100) break;
       for (final box2 in allBoxes) {
-        Vector4 v1 = Vector4.array([box1.rect.left, box1.rect.bottom, box1.rect.right, box1.rect.top]);
-        Vector4 v2 = Vector4.array([box2.rect.left, box2.rect.bottom, box2.rect.right, box2.rect.top]);
+        vec.Vector4 v1 = vec.Vector4.array(
+            [box1.rect.left, box1.rect.bottom, box1.rect.right, box1.rect.top]);
+        vec.Vector4 v2 = vec.Vector4.array(
+            [box2.rect.left, box2.rect.bottom, box2.rect.right, box2.rect.top]);
         /*
         print("Vector 1: ");
         print(v1);
         print("Vector 2: ");
         print(v2);
-        print((v1 - v2).distanceToSquared(Vector4.zero()));
+        double n123 = (v1 - v2).distanceToSquared(Vector4.zero());
+        if(n123 < 225) {
+          print(box1.text);
+          print(box2.text);
+          print(n123);
+        }
         */
-        if (box1.text == box2.text && (v1 - v2).distanceToSquared(Vector4.zero()) < 225) {
-        //if (box1.text == box2.text /*&& box1.rect.overlaps(box2.rect)*/ && ) {
+        if (box1.text == box2.text &&
+            (v1 - v2).distanceToSquared(vec.Vector4.zero()) < 225) {
+          //if (box1.text == box2.text /*&& box1.rect.overlaps(box2.rect)*/ && ) {
           simCount += 1;
           if (simCount >= 5) {
             isSameFrame = true;
@@ -200,7 +224,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       final painter = MyTextDetectorPainter(
           wBoxes,
           inputImage.inputImageData!.size,
-          inputImage.inputImageData!.imageRotation, context);
+          inputImage.inputImageData!.imageRotation,
+          context);
 
       customPaint = CustomPaint(painter: painter);
     } else {
