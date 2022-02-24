@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 
+import '../myservice.dart';
 import 'coordinates_translator.dart';
 
 class MyTextDetectorPainter extends CustomPainter {
@@ -16,9 +17,12 @@ class MyTextDetectorPainter extends CustomPainter {
   final BuildContext context;
 
 
-
   @override
   void paint(Canvas canvas, Size size) {
+    MyService _myService = MyService();
+    print("Setting myVariable to:" + _myService.myVariable.toString());
+    _myService.setMyVariable(size);
+
     final Paint paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0
@@ -49,6 +53,12 @@ class MyTextDetectorPainter extends CustomPainter {
       builder.addText('${textWord.text}');
       builder.pop();
 
+
+      print("Size: ");
+      print(textWord.rect.left);
+      print(size);
+      print(rotation.toString());
+      print(absoluteImageSize);
       final left =
           translateX(textWord.rect.left, rotation, size, absoluteImageSize);
       final top =
@@ -58,14 +68,20 @@ class MyTextDetectorPainter extends CustomPainter {
       final bottom =
           translateY(textWord.rect.bottom, rotation, size, absoluteImageSize);
 
-      /*
+
       print("translated: ");
       print(textWord.text);
       print(left);
       print(top);
       print(right);
       print(bottom);
-      */
+      print("not translated: ");
+      print(textWord.text);
+      print(textWord.rect.left);
+      print(textWord.rect.top);
+      print(textWord.rect.right);
+      print(textWord.rect.bottom);
+
       /*
       canvas.drawRect(
         Rect.fromLTRB(left, top, right, bottom),
@@ -91,4 +107,5 @@ class MyTextDetectorPainter extends CustomPainter {
     return true;
     //return oldDelegate.recognisedText != recognisedText;
   }
+
 }

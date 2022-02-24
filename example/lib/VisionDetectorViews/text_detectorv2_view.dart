@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:vector_math/vector_math.dart' as vec;
 import 'package:fuzzy/fuzzy.dart';
+import 'myservice.dart';
 import 'painters/coordinates_translator.dart';
 
 import 'camera_view.dart';
@@ -16,6 +17,7 @@ class TextDetectorV2View extends StatefulWidget {
 }
 
 class _TextDetectorViewV2State extends State<TextDetectorV2View> {
+  MyService _myService = MyService();
   TextDetectorV2 textDetector = GoogleMlKit.vision.textDetectorV2();
   bool isBusy = false;
   CustomPaint? customPaint;
@@ -74,19 +76,22 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
     final mediaQueryData = MediaQuery.of(context);
     final size = mediaQueryData.size;
+    print(mediaQueryData.size.aspectRatio);
+    print(size.height);
+    print(size.width);
+    print(AppBar().preferredSize.height);
 
-    final camView = CameraView(
-      title: titleVar,
-      customPaint: customPaint,
-      onImage: (inputImage) {
-        inputImg = inputImage;
-        processImage(inputImage);
-      },
-    );
+    final camView =
+        CameraView(
+          title: titleVar,
+          customPaint: customPaint,
+          onImage: (inputImage) {
+            inputImg = inputImage;
+            processImage(inputImage);
+          },
+        );
 
-    widgets = <Widget>[
-      camView
-    ];
+    widgets = <Widget>[camView];
 
     for (final wBox in wBoxes) {
       print("wBox: ");
@@ -95,9 +100,15 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       print(wBox.rect.top);
       print(wBox.rect.right);
       print(wBox.rect.bottom);
+      print("CANVAS SIZE");
+      print(_myService.myVariable);
+      print("COMPUTED FACTORS:");
+      print((_myService.myVariable.width/inputImg.inputImageData!.size.height));
+      print((_myService.myVariable.height/inputImg.inputImageData!.size.width));
       widgets.add(Positioned(
-          left: wBox.rect.left * 1.71,
-          top: AppBar().preferredSize.height + (wBox.rect.top + (wBox.rect.bottom - wBox.rect.top) / 2) * 1.88,
+          left: wBox.rect.left * (_myService.myVariable.width/inputImg.inputImageData!.size.height),//1.5,//1.71,
+          top: AppBar().preferredSize.height +
+              (wBox.rect.top + (wBox.rect.bottom - wBox.rect.top) / 2) * (_myService.myVariable.height/inputImg.inputImageData!.size.width),//1.75,//1.88,
           //width: 1.71 * (wBox.rect.right - wBox.rect.left),
           //height: 1.88 * (wBox.rect.bottom - wBox.rect.top),
           child: OutlinedButton(
@@ -109,7 +120,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             ),
           )));
     }
-    return Stack(alignment: Alignment.topLeft, children: widgets);
+    return Stack(alignment: Alignment.topLeft, fit: StackFit.expand, children: widgets);
   }
 
   bool fuzzyContains(Map<String, String> dict, String word) {
@@ -225,7 +236,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
           wBoxes,
           inputImage.inputImageData!.size,
           inputImage.inputImageData!.imageRotation,
-          context);
+          context
+      );
 
       customPaint = CustomPaint(painter: painter);
     } else {
