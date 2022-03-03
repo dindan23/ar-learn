@@ -1,15 +1,13 @@
-import 'dart:collection';
-
 import 'package:flutter/material.dart';
 
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:vector_math/vector_math.dart' as vec;
 import 'package:fuzzy/fuzzy.dart';
 import 'myservice.dart';
-import 'painters/coordinates_translator.dart';
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
+import 'painters/coordinates_translator.dart';
 
 class TextDetectorV2View extends StatefulWidget {
   @override
@@ -26,6 +24,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   List<TextElement> oldAllBoxes = [];
   List<TextElement> oldWBoxes = [];
   int recCount = 0; // number of recognized words (wBoxes)
+
+  // TODO: An dieser Stelle sollte das Wörterbuch verfügbar sein; Runterladen schon bei Start der App?
   final Map<String, String> dict = {
     "Analysis":
         "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
@@ -76,41 +76,31 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
     final mediaQueryData = MediaQuery.of(context);
     final size = mediaQueryData.size;
-    print(mediaQueryData.size.aspectRatio);
-    print(size.height);
-    print(size.width);
-    print(AppBar().preferredSize.height);
 
-    final camView =
-        CameraView(
-          title: titleVar,
-          customPaint: customPaint,
-          onImage: (inputImage) {
-            inputImg = inputImage;
-            processImage(inputImage);
-          },
-        );
+    final camView = CameraView(
+      title: titleVar,
+      customPaint: customPaint,
+      onImage: (inputImage) {
+        inputImg = inputImage;
+        processImage(inputImage);
+      },
+    );
 
     widgets = <Widget>[camView];
 
     for (final wBox in wBoxes) {
-      print("wBox: ");
-      print(wBox.text);
-      print(wBox.rect.left);
-      print(wBox.rect.top);
-      print(wBox.rect.right);
-      print(wBox.rect.bottom);
-      print("CANVAS SIZE");
-      print(_myService.myVariable);
-      print("COMPUTED FACTORS:");
-      print((_myService.myVariable.width/inputImg.inputImageData!.size.height));
-      print((_myService.myVariable.height/inputImg.inputImageData!.size.width));
+      final hFactor =
+          _myService.myVariable.width / inputImg.inputImageData!.size.height;
+      final vFactor =
+          _myService.myVariable.height / inputImg.inputImageData!.size.width;
+
+      final heurLeft = wBox.rect.left * hFactor;
+      final heurTop = AppBar().preferredSize.height +
+          (wBox.rect.top + (wBox.rect.bottom - wBox.rect.top) / 2) * vFactor;
+
       widgets.add(Positioned(
-          left: wBox.rect.left * (_myService.myVariable.width/inputImg.inputImageData!.size.height),//1.5,//1.71,
-          top: AppBar().preferredSize.height +
-              (wBox.rect.top + (wBox.rect.bottom - wBox.rect.top) / 2) * (_myService.myVariable.height/inputImg.inputImageData!.size.width),//1.75,//1.88,
-          //width: 1.71 * (wBox.rect.right - wBox.rect.left),
-          //height: 1.88 * (wBox.rect.bottom - wBox.rect.top),
+          left: heurLeft,
+          top: heurTop,
           child: OutlinedButton(
             onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
             child: Text(wBox.text),
@@ -120,27 +110,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             ),
           )));
     }
-    return Stack(alignment: Alignment.topLeft, fit: StackFit.expand, children: widgets);
-  }
-
-  bool fuzzyContains(Map<String, String> dict, String word) {
-    final bookList = dict.keys.toList(growable: false);
-    final fuse = Fuzzy(
-      bookList,
-      options: FuzzyOptions(
-        tokenize: false,
-        threshold: 0.05,
-      ),
-    );
-
-    final result = fuse.search(word);
-
-    if (result.isEmpty) {
-      return false;
-    } else {
-      print(word + " " + result.first.item.toString());
-      return true;
-    }
+    return Stack(
+        alignment: Alignment.topLeft, fit: StackFit.expand, children: widgets);
   }
 
   // This is similar to the call to pytesseract.image_to_data()
@@ -214,6 +185,8 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       for (final oldWBox in oldWBoxes) {
         bool foundOverlap = false;
         for (final wBox in wBoxes) {
+          // the next line means that it's ok if several same words are recognized,
+          // (but in the merge, an old box is only taken if the word is not already in the new boxes)
           if (oldWBox.rect.overlaps(wBox.rect) || oldWBox.text == wBox.text) {
             foundOverlap = true;
             break;
@@ -236,8 +209,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
           wBoxes,
           inputImage.inputImageData!.size,
           inputImage.inputImageData!.imageRotation,
-          context
-      );
+          context);
 
       customPaint = CustomPaint(painter: painter);
     } else {
