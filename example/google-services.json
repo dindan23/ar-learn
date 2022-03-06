@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "725272020673",
+    "project_id": "ar-learn-a7339",
+    "storage_bucket": "ar-learn-a7339.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725272020673:android:9d7feaca50ba1265d83640",
+        "android_client_info": {
+          "package_name": "com.example.arlearn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "725272020673-0htr7946q62cro4hu20cmdp37rrutu5i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3Gs7quJhPBe9xY94KWH7k5sggj3vR5Aw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "725272020673-0htr7946q62cro4hu20cmdp37rrutu5i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
