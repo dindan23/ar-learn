@@ -2,17 +2,47 @@ import 'package:flutter/material.dart';
 
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:vector_math/vector_math.dart' as vec;
-import 'package:fuzzy/fuzzy.dart';
 import 'myservice.dart';
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
-import 'painters/coordinates_translator.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TextDetectorV2View extends StatefulWidget {
   @override
   _TextDetectorViewV2State createState() => _TextDetectorViewV2State();
 }
+
+final CollectionReference collectionRef =
+FirebaseFirestore.instance.collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
+
+Map<String, String> dict = {};
+
+class DatabaseServices {
+  List rawDatabase = [];
+
+  SetPackage(String pck)async{
+
+    // TODO: Package-Auswahl mit If-Abfrage oder Alternativweg
+    if(pck == 'A') {
+      //to get data from a single/particular document alone.
+      //var temp = await collectionRef.doc("<your document ID here>").get();
+
+      // to get data from all documents sequentially
+      await collectionRef.get().then((querySnapshot) {
+        for (var result in querySnapshot.docs) {
+          rawDatabase.add(result.data());
+        }
+      });
+      rawDatabase.forEach((element) {
+        var getKey = element["Keyword"];
+        dict["$getKey"] = element["Link"];
+      });
+    };
+  }
+}
+
 
 class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   MyService _myService = MyService();
@@ -25,15 +55,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   List<TextElement> oldWBoxes = [];
   int recCount = 0; // number of recognized words (wBoxes)
 
-  // TODO: An dieser Stelle sollte das Wörterbuch verfügbar sein; Runterladen schon bei Start der App?
-  final Map<String, String> dict = {
-    "Analysis":
-        "Die Analysis [aˈnaːlyzɪs] (ανάλυσις análysis ‚Auflösung‘, ἀναλύειν analýein ‚auflösen‘) ist ein Teilgebiet der Mathematik, dessen Grundlagen von Gottfried Wilhelm Leibniz und Isaac Newton als Infinitesimalrechnung unabhängig voneinander entwickelt wurden.",
-    "Abitur": "Abitur is defined.",
-    "Kapitel": "Kapitel is defined.",
-    "Logarithmusfunktionen":
-        "Durch die Umkehrung der Exponentialfunktion f(x) = a^x (a > 0) ergibt sich die Logarithmusfunktion: f(x) = log_a(x)."
-  };
+
   List<Widget> widgets = <Widget>[];
   late InputImage inputImg;
 
@@ -57,7 +79,14 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             content: SingleChildScrollView(
               child: ListBody(
                 children: <Widget>[
+
+                  //Link anzeigen
                   Text(definition),
+
+                    // Bild anzeigen
+                    Image.network('gs://ar-learn-a7339.appspot.com/' + definition.toString()),
+
+
                 ],
               ),
             ),

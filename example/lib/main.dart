@@ -5,6 +5,7 @@ import 'package:google_ml_kit_example/NlpDetectorViews/entity_extraction_view.da
 import 'package:google_ml_kit_example/NlpDetectorViews/language_translator_view.dart';
 import 'package:google_ml_kit_example/NlpDetectorViews/smart_reply_view.dart';
 import 'package:google_ml_kit_example/VisionDetectorViews/object_detector_view.dart';
+import 'package:google_ml_kit_example/screens/wrapper.dart';
 
 import 'NlpDetectorViews/language_identifier_view.dart';
 import 'VisionDetectorViews/detector_views.dart';
@@ -12,16 +13,33 @@ import 'package:flutter/material.dart';
 
 import 'VisionDetectorViews/text_detectorv2_view.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:google_ml_kit_example/VisionDetectorViews/text_detectorv2_view.dart';
+
 List<CameraDescription> cameras = [];
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
 
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   cameras = await availableCameras();
-  runApp(MyApp());
+  runApp(Init());
+
 }
 
-class MyApp extends StatelessWidget {
+class Init extends StatelessWidget{
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Wrapper(),
+    );
+  }
+}
+
+
+class MyApp extends StatelessWidget{
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -32,8 +50,14 @@ class MyApp extends StatelessWidget {
 }
 
 class Home extends StatelessWidget {
+
+  String userSet = '';
+
   @override
   Widget build(BuildContext context) {
+
+    String dropdownValue = 'Package';
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Google ML Kit Demo App'),
@@ -47,6 +71,23 @@ class Home extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
+
+
+                  DropdownButton<String>(
+                    items: <String>['A', 'B', 'C', 'D'].map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      userSet = newValue!;
+                      DatabaseServices().SetPackage(newValue);
+                      print('Package Set: ' + userSet);
+
+                      },
+                  ),
+
                   ExpansionTile(
                     title: const Text("Vision"),
                     children: [
