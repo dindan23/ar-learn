@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:vector_math/vector_math.dart' as vec;
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'myservice.dart';
 
 import 'camera_view.dart';
@@ -16,6 +17,7 @@ class TextDetectorV2View extends StatefulWidget {
 
 final CollectionReference collectionRef =
 FirebaseFirestore.instance.collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
+
 
 Map<String, String> dict = {};
 
@@ -37,7 +39,11 @@ class DatabaseServices {
       });
       rawDatabase.forEach((element) {
         var getKey = element["Keyword"];
-        dict["$getKey"] = element["Link"];
+        //dict["$getKey"] = element["Link"];
+        firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child(element["Link"]);
+        ref.getDownloadURL().then((url) {dict["$getKey"] = url;});
       });
     };
   }
@@ -80,12 +86,9 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
               child: ListBody(
                 children: <Widget>[
 
-                  //Link anzeigen
-                  Text(definition),
-
-                    // Bild anzeigen
-                    Image.network('gs://ar-learn-a7339.appspot.com/' + definition.toString()),
-
+                  // Bild anzeigen
+                  //Image.network('https://picsum.photos/250?image=9'),
+                  Image.network(definition),
 
                 ],
               ),
