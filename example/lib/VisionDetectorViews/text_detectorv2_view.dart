@@ -20,7 +20,7 @@ final CollectionReference collectionRef = FirebaseFirestore.instance
     .collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
 
 Map<String, Uint8List> keyToDataMap = {};
-Map<String, String> dict = {};
+Map<String, String> keyToLinkMap = {};
 
 class DatabaseServices {
   List rawDatabase = [];
@@ -38,18 +38,18 @@ class DatabaseServices {
         }
       });
       rawDatabase.forEach((element) {
-        var getKey = element["Keyword"];
-        print(element);
-        //dict["$getKey"] = element["Link"];
-        //print(getKey == 'Integral');
+        var keyword = element["Keyword"];
+        var link = element["Link"];
+        keyToLinkMap.putIfAbsent(keyword, () => link);
 
-        firebase_storage.Reference ref = firebase_storage
-            .FirebaseStorage.instance
-            .ref()
-            .child(element["Link"]);
+        print("downloaded database element: ");
+        print(element);
+
+        firebase_storage.Reference ref =
+            firebase_storage.FirebaseStorage.instance.ref().child(link);
         ref
             .getData(10000000)
-            .then((data) => keyToDataMap.putIfAbsent(getKey, () => data!));
+            .then((data) => keyToDataMap.putIfAbsent(keyword, () => data!));
       });
     }
     ;
@@ -98,13 +98,6 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   @override
   Widget build(BuildContext context) {
-    var img = imageBytes != null
-        ? Image.memory(
-            imageBytes,
-            fit: BoxFit.cover,
-          )
-        : Text(errorMsg != null ? errorMsg : "Loading...");
-
     Future<void> _showMyDialog(String word, String definition) async {
       return showDialog<void>(
         context: context,
@@ -169,7 +162,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
           left: heurLeft,
           top: heurTop,
           child: OutlinedButton(
-            onPressed: () => _showMyDialog(wBox.text, dict[wBox.text]!),
+            onPressed: () => _showMyDialog(wBox.text, keyToLinkMap[wBox.text]!),
             child: Text(wBox.text),
             style: OutlinedButton.styleFrom(
               primary: Colors.lightGreenAccent,
@@ -188,6 +181,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
     // TODO: maybe do the following expensive ocr call in an isolate or in the compute method???
     final recognisedText = await textDetector.processImage(inputImage,
         script: TextRecognitionOptions.DEFAULT);
+
     //print('Found ${recognisedText.blocks.length} textBlocks');
     // TODO: store allboxes and wboxes here
     // TODO: while doing that, use TEXT CORRECTION / SPELL CHECKING according to our dictionary
@@ -203,13 +197,14 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
         var words = textLine.elements;
         allBoxes.addAll(words);
         // TODO: do SPELL CHECKING here according to our dictionary
-        words.retainWhere((element) => dict.containsKey(
+        words.retainWhere((element) => keyToLinkMap.containsKey(
             element.text)); //|| fuzzyContains(dict, element.text));
         for (final textWord in words) {
           wBoxes.add(textWord);
         }
       }
     }
+
     // TODO: then analyse allboxes: if 5 are the same, we conclude that it's the same frame
     bool isSameFrame = false;
     int simCount = 0;
