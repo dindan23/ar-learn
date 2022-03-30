@@ -16,20 +16,18 @@ class TextDetectorV2View extends StatefulWidget {
   _TextDetectorViewV2State createState() => _TextDetectorViewV2State();
 }
 
-final CollectionReference collectionRef =
-FirebaseFirestore.instance.collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
+final CollectionReference collectionRef = FirebaseFirestore.instance
+    .collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
 
-
-Map<String, String> keyToLinkMap = {};
+Map<String, Uint8List> keyToDataMap = {};
 Map<String, String> dict = {};
 
 class DatabaseServices {
   List rawDatabase = [];
 
-  SetPackage(String pck)async{
-
+  SetPackage(String pck) async {
     // TODO: Package-Auswahl mit If-Abfrage oder Alternativweg
-    if(pck == 'A') {
+    if (pck == 'A') {
       //to get data from a single/particular document alone.
       //var temp = await collectionRef.doc("<your document ID here>").get();
 
@@ -41,19 +39,22 @@ class DatabaseServices {
       });
       rawDatabase.forEach((element) {
         var getKey = element["Keyword"];
+        print(element);
         //dict["$getKey"] = element["Link"];
-        print(getKey == 'Integral');
-        keyToLinkMap.putIfAbsent(getKey, () => element["Link"]);
+        //print(getKey == 'Integral');
 
-        firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+        firebase_storage.Reference ref = firebase_storage
+            .FirebaseStorage.instance
             .ref()
             .child(element["Link"]);
-        ref.getDownloadURL().then((url) {dict["$getKey"] = url;});
+        ref
+            .getData(10000000)
+            .then((data) => keyToDataMap.putIfAbsent(getKey, () => data!));
       });
-    };
+    }
+    ;
   }
 }
-
 
 class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   MyService _myService = MyService();
@@ -65,7 +66,6 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   List<TextElement> oldAllBoxes = [];
   List<TextElement> oldWBoxes = [];
   int recCount = 0; // number of recognized words (wBoxes)
-
 
   List<Widget> widgets = <Widget>[];
   late InputImage inputImg;
@@ -88,7 +88,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
      */
   }
 
-  String titleVar = 'Sucht nach Definitionen';
+  String titleVar = 'SCAN';
 
   @override
   void dispose() async {
@@ -98,10 +98,12 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
 
   @override
   Widget build(BuildContext context) {
-    var img = imageBytes != null ? Image.memory(
-      imageBytes,
-      fit: BoxFit.cover,
-    ) : Text(errorMsg != null ? errorMsg : "Loading...");
+    var img = imageBytes != null
+        ? Image.memory(
+            imageBytes,
+            fit: BoxFit.cover,
+          )
+        : Text(errorMsg != null ? errorMsg : "Loading...");
 
     Future<void> _showMyDialog(String word, String definition) async {
       return showDialog<void>(
@@ -113,12 +115,16 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             content: SingleChildScrollView(
               child: ListBody(
                 children: <Widget>[
-
                   // Bild anzeigen
                   //Image.network('https://picsum.photos/250?image=9'),
 
                   //Image.network(definition),
-                  img,
+                  keyToDataMap.containsKey(word)
+                      ? Image.memory(
+                          keyToDataMap[word]!,
+                          fit: BoxFit.cover,
+                        )
+                      : Text(errorMsg != null ? errorMsg : "Loading..."),
                 ],
               ),
             ),
@@ -263,29 +269,6 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       //print("DIFFERENT FRAME");
       recCount = wBoxes.length;
     }
-
-    // cache images as soon as they are recognized
-    wBoxes.forEach((wBox) {
-      if(testCount < 1) {
-        testCount += 1;
-        print("in CACHING code...");
-        if (keyToLinkMap.containsKey(wBox.text)) {
-          firebase_storage.FirebaseStorage.instance
-              .ref().child(keyToLinkMap[wBox.text]!).getData(
-              10000000).then((data) =>
-              setState(() {
-                imageBytes = data!;
-                print("IMAGE BYTES LENGTH: ");
-                print(imageBytes.length);
-              })
-          ).catchError((e) =>
-              setState(() {
-                errorMsg = e.error;
-              })
-          );
-        }
-      }
-    });
 
     if (inputImage.inputImageData?.size != null &&
         inputImage.inputImageData?.imageRotation != null) {
