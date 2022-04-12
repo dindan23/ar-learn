@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 
 import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:google_ml_kit_example/api/pdf_api.dart';
 import 'package:vector_math/vector_math.dart' as vec;
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import 'myservice.dart';
 import 'dart:typed_data';
+import '../api/pdf_api.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'dart:async';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 
 class TextDetectorV2View extends StatefulWidget {
   @override
@@ -17,7 +26,7 @@ class TextDetectorV2View extends StatefulWidget {
 }
 
 final CollectionReference collectionRef = FirebaseFirestore.instance
-    .collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
+    .collection('Content_User_C4U5KdZ9YVOPOfJLP23daGsOsEH2');
 
 Map<String, Uint8List> keyToDataMap = {};
 Map<String, String> keyToLinkMap = {};
@@ -47,9 +56,13 @@ class DatabaseServices {
 
         firebase_storage.Reference ref =
             firebase_storage.FirebaseStorage.instance.ref().child(link);
-        ref
-            .getData(10000000)
-            .then((data) => keyToDataMap.putIfAbsent(keyword, () => data!));
+        ref.getData(10000000).then((data) {
+          keyToDataMap.putIfAbsent(keyword, () => data!);
+          if (link.toString().endsWith("pdf")) {
+            print("There is a pdf file for " + keyword);
+            PDFApi.storeFile(link, data!);
+          }
+        });
       });
     }
     ;
@@ -110,14 +123,31 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
                 children: <Widget>[
                   // Bild anzeigen
                   //Image.network('https://picsum.photos/250?image=9'),
+                  keyToLinkMap.containsKey(word)
+                      ? (keyToLinkMap[word]!.endsWith('pdf')
+                          ? TextButton(
+                              child: Text("Open PDF"),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        PDFScreen(path: keyToDataMap[word]!),
+                                  ),
+                                );
+                              })
+                          : (keyToLinkMap[word]!.endsWith('PNG')
+                              ?
 
-                  //Image.network(definition),
-                  keyToDataMap.containsKey(word)
-                      ? Image.memory(
-                          keyToDataMap[word]!,
-                          fit: BoxFit.cover,
-                        )
-                      : Text(errorMsg != null ? errorMsg : "Loading..."),
+                              //Image.network(definition),
+
+                              Image.memory(
+                                  keyToDataMap[word]!,
+                                  fit: BoxFit.cover,
+                                )
+                              : Text(
+                                  errorMsg != null ? errorMsg : "View not implemented for..." + keyToLinkMap[word]!)))
+                      : Text(errorMsg != null ? errorMsg : "No data stored"),
                 ],
               ),
             ),
@@ -282,5 +312,107 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
     if (mounted) {
       setState(() {});
     }
+  }
+}
+
+class PDFScreen extends StatefulWidget {
+  final Uint8List? path;
+
+  PDFScreen({Key? key, this.path}) : super(key: key);
+
+  _PDFScreenState createState() => _PDFScreenState();
+}
+
+class _PDFScreenState extends State<PDFScreen> with WidgetsBindingObserver {
+  final Completer<PDFViewController> _controller =
+      Completer<PDFViewController>();
+  int? pages = 0;
+  int? currentPage = 0;
+  bool isReady = false;
+  String errorMessage = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Document"),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Stack(
+        children: <Widget>[
+          PDFView(
+            pdfData: widget.path,
+            enableSwipe: true,
+            swipeHorizontal: true,
+            autoSpacing: false,
+            pageFling: true,
+            pageSnap: true,
+            defaultPage: currentPage!,
+            fitPolicy: FitPolicy.BOTH,
+            preventLinkNavigation: false,
+            // if set to true the link is handled in flutter
+            onRender: (_pages) {
+              setState(() {
+                pages = _pages;
+                isReady = true;
+              });
+            },
+            onError: (error) {
+              setState(() {
+                errorMessage = error.toString();
+              });
+              print(error.toString());
+            },
+            onPageError: (page, error) {
+              setState(() {
+                errorMessage = '$page: ${error.toString()}';
+              });
+              print('$page: ${error.toString()}');
+            },
+            onViewCreated: (PDFViewController pdfViewController) {
+              _controller.complete(pdfViewController);
+            },
+            onLinkHandler: (String? uri) {
+              print('goto uri: $uri');
+            },
+            onPageChanged: (int? page, int? total) {
+              print('page change: $page/$total');
+              setState(() {
+                currentPage = page;
+              });
+            },
+          ),
+          errorMessage.isEmpty
+              ? !isReady
+                  ? Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : Container()
+              : Center(
+                  child: Text(errorMessage),
+                )
+        ],
+      ),
+      floatingActionButton: FutureBuilder<PDFViewController>(
+        future: _controller.future,
+        builder: (context, AsyncSnapshot<PDFViewController> snapshot) {
+          if (snapshot.hasData) {
+            return FloatingActionButton.extended(
+              label: Text("Go to ${pages! ~/ 2}"),
+              onPressed: () async {
+                await snapshot.data!.setPage(pages! ~/ 2);
+              },
+            );
+          }
+
+          return Container();
+        },
+      ),
+    );
   }
 }
