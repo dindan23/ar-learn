@@ -4,13 +4,11 @@ import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:google_ml_kit_example/api/pdf_api.dart';
 import 'package:vector_math/vector_math.dart' as vec;
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 import 'myservice.dart';
 import 'dart:typed_data';
 import '../api/pdf_api.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
-import 'package:video_player/video_player.dart';
+import '../widgets/remote_video.dart';
+import '../widgets/pdf_screen.dart';
 
 import 'camera_view.dart';
 import 'painters/my_text_detector_painter.dart';
@@ -18,8 +16,6 @@ import 'painters/my_text_detector_painter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'dart:async';
-import 'dart:io';
-import 'package:http/http.dart' as http;
 
 class TextDetectorV2View extends StatefulWidget {
   @override
@@ -31,6 +27,7 @@ final CollectionReference collectionRef = FirebaseFirestore.instance
 
 Map<String, Uint8List> keyToDataMap = {};
 Map<String, String> keyToLinkMap = {};
+Map<String, String> keyToDownloadURLMap = {};
 
 class DatabaseServices {
   List rawDatabase = [];
@@ -57,197 +54,23 @@ class DatabaseServices {
 
         firebase_storage.Reference ref =
             firebase_storage.FirebaseStorage.instance.ref().child(link);
-        ref.getData(10000000).then((data) {
-          keyToDataMap.putIfAbsent(keyword, () => data!);
-          if (link.toString().endsWith("pdf")) {
-            print("There is a pdf file for " + keyword);
-            PDFApi.storeFile(link, data!);
-          }
-        });
+        if (link.toString().endsWith('.mp4')) {
+          print("There is a video file for " + keyword);
+          ref.getDownloadURL().then((durl) {
+            keyToDownloadURLMap.putIfAbsent(keyword, () => durl);
+          });
+        } else {
+          ref.getData(10000000).then((data) {
+            keyToDataMap.putIfAbsent(keyword, () => data!);
+            if (link.toString().endsWith("pdf")) {
+              print("There is a pdf file for " + keyword);
+              PDFApi.storeFile(link, data!);
+            }
+          });
+        }
       });
     }
     ;
-  }
-}
-
-class _BumbleBeeRemoteVideo extends StatefulWidget {
-  @override
-  _BumbleBeeRemoteVideoState createState() => _BumbleBeeRemoteVideoState();
-}
-
-class _BumbleBeeRemoteVideoState extends State<_BumbleBeeRemoteVideo> {
-  late VideoPlayerController _controller;
-
-  Future<ClosedCaptionFile> _loadCaptions() async {
-    final String fileContents = await DefaultAssetBundle.of(context)
-        .loadString('assets/bumble_bee_captions.vtt');
-    return WebVTTCaptionFile(
-        fileContents); // For vtt files, use WebVTTCaptionFile
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.network(
-      'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    );
-
-    _controller.addListener(() {
-      setState(() {});
-    });
-    _controller.setLooping(true);
-    _controller.initialize();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: <Widget>[
-          Container(padding: const EdgeInsets.only(top: 20.0)),
-          const Text('With remote mp4'),
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: <Widget>[
-                  VideoPlayer(_controller),
-                  ClosedCaption(text: _controller.value.caption.text),
-                  _ControlsOverlay(controller: _controller),
-                  VideoProgressIndicator(_controller, allowScrubbing: true),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ControlsOverlay extends StatelessWidget {
-  const _ControlsOverlay({Key? key, required this.controller})
-      : super(key: key);
-
-  static const List<Duration> _exampleCaptionOffsets = <Duration>[
-    Duration(seconds: -10),
-    Duration(seconds: -3),
-    Duration(seconds: -1, milliseconds: -500),
-    Duration(milliseconds: -250),
-    Duration(milliseconds: 0),
-    Duration(milliseconds: 250),
-    Duration(seconds: 1, milliseconds: 500),
-    Duration(seconds: 3),
-    Duration(seconds: 10),
-  ];
-  static const List<double> _examplePlaybackRates = <double>[
-    0.25,
-    0.5,
-    1.0,
-    1.5,
-    2.0,
-    3.0,
-    5.0,
-    10.0,
-  ];
-
-  final VideoPlayerController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 50),
-          reverseDuration: const Duration(milliseconds: 200),
-          child: controller.value.isPlaying
-              ? const SizedBox.shrink()
-              : Container(
-            color: Colors.black26,
-            child: const Center(
-              child: Icon(
-                Icons.play_arrow,
-                color: Colors.white,
-                size: 100.0,
-                semanticLabel: 'Play',
-              ),
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            controller.value.isPlaying ? controller.pause() : controller.play();
-          },
-        ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: PopupMenuButton<Duration>(
-            initialValue: controller.value.captionOffset,
-            tooltip: 'Caption Offset',
-            onSelected: (Duration delay) {
-              controller.setCaptionOffset(delay);
-            },
-            itemBuilder: (BuildContext context) {
-              return <PopupMenuItem<Duration>>[
-                for (final Duration offsetDuration in _exampleCaptionOffsets)
-                  PopupMenuItem<Duration>(
-                    value: offsetDuration,
-                    child: Text('${offsetDuration.inMilliseconds}ms'),
-                  )
-              ];
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                // Using less vertical padding as the text is also longer
-                // horizontally, so it feels like it would need more spacing
-                // horizontally (matching the aspect ratio of the video).
-                vertical: 12,
-                horizontal: 16,
-              ),
-              child: Text('${controller.value.captionOffset.inMilliseconds}ms'),
-            ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.topRight,
-          child: PopupMenuButton<double>(
-            initialValue: controller.value.playbackSpeed,
-            tooltip: 'Playback speed',
-            onSelected: (double speed) {
-              controller.setPlaybackSpeed(speed);
-            },
-            itemBuilder: (BuildContext context) {
-              return <PopupMenuItem<double>>[
-                for (final double speed in _examplePlaybackRates)
-                  PopupMenuItem<double>(
-                    value: speed,
-                    child: Text('${speed}x'),
-                  )
-              ];
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                // Using less vertical padding as the text is also longer
-                // horizontally, so it feels like it would need more spacing
-                // horizontally (matching the aspect ratio of the video).
-                vertical: 12,
-                horizontal: 16,
-              ),
-              child: Text('${controller.value.playbackSpeed}x'),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -268,20 +91,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   String errorMsg = "Error";
   int testCount = 0;
 
-  _TextDetectorViewV2State() {
-    /*
-    firebase_storage.FirebaseStorage.instance
-        .ref().child('UserUpload/9F85Fl7sW4XXtE8vBfpecDgwvmr1/Hammerrrrr.PNG').getData(10000000).then((data) =>
-        setState(() {
-          imageBytes = data!;
-        })
-    ).catchError((e) =>
-        setState(() {
-          errorMsg = e.error;
-        })
-    );
-     */
-  }
+  _TextDetectorViewV2State() {}
 
   String titleVar = 'SCAN';
 
@@ -303,32 +113,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             content: SingleChildScrollView(
               child: ListBody(
                 children: <Widget>[
-                  // Bild anzeigen
-                  //Image.network('https://picsum.photos/250?image=9'),
-                  keyToLinkMap.containsKey(word)
-                      ? (keyToLinkMap[word]!.endsWith('pdf')
-                          ? TextButton(
-                              child: Text("Open PDF"),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        PDFScreen(path: keyToDataMap[word]!),
-                                  ),
-                                );
-                              })
-                          : (keyToLinkMap[word]!.endsWith('PNG')
-                              ?
-
-                              //Image.network(definition),
-
-                              Image.memory(
-                                  keyToDataMap[word]!,
-                                  fit: BoxFit.cover,
-                                )
-                              : _BumbleBeeRemoteVideo()))
-                      : _BumbleBeeRemoteVideo(),//Text(errorMsg != null ? errorMsg : "No data stored"),
+                  getWidgetForFileEnding(word),
                 ],
               ),
             ),
@@ -428,18 +213,7 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
             [box1.rect.left, box1.rect.bottom, box1.rect.right, box1.rect.top]);
         vec.Vector4 v2 = vec.Vector4.array(
             [box2.rect.left, box2.rect.bottom, box2.rect.right, box2.rect.top]);
-        /*
-        print("Vector 1: ");
-        print(v1);
-        print("Vector 2: ");
-        print(v2);
-        double n123 = (v1 - v2).distanceToSquared(Vector4.zero());
-        if(n123 < 225) {
-          print(box1.text);
-          print(box2.text);
-          print(n123);
-        }
-        */
+
         if (box1.text == box2.text &&
             (v1 - v2).distanceToSquared(vec.Vector4.zero()) < 225) {
           //if (box1.text == box2.text /*&& box1.rect.overlaps(box2.rect)*/ && ) {
@@ -494,106 +268,32 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
       setState(() {});
     }
   }
-}
 
-class PDFScreen extends StatefulWidget {
-  final Uint8List? path;
+  Widget getWidgetForFileEnding(String word) {
+    return keyToLinkMap.containsKey(word)
+        ? (keyToLinkMap[word]!.endsWith('pdf')
+        ? TextButton(
+        child: Text("Open PDF"),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  PDFScreen(path: keyToDataMap[word]!),
+            ),
+          );
+        })
+        : (keyToLinkMap[word]!.endsWith('PNG')
+        ?
 
-  PDFScreen({Key? key, this.path}) : super(key: key);
+    //Image.network(definition),
 
-  _PDFScreenState createState() => _PDFScreenState();
-}
-
-class _PDFScreenState extends State<PDFScreen> with WidgetsBindingObserver {
-  final Completer<PDFViewController> _controller =
-      Completer<PDFViewController>();
-  int? pages = 0;
-  int? currentPage = 0;
-  bool isReady = false;
-  String errorMessage = '';
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Document"),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.share),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          PDFView(
-            pdfData: widget.path,
-            enableSwipe: true,
-            swipeHorizontal: true,
-            autoSpacing: false,
-            pageFling: true,
-            pageSnap: true,
-            defaultPage: currentPage!,
-            fitPolicy: FitPolicy.BOTH,
-            preventLinkNavigation: false,
-            // if set to true the link is handled in flutter
-            onRender: (_pages) {
-              setState(() {
-                pages = _pages;
-                isReady = true;
-              });
-            },
-            onError: (error) {
-              setState(() {
-                errorMessage = error.toString();
-              });
-              print(error.toString());
-            },
-            onPageError: (page, error) {
-              setState(() {
-                errorMessage = '$page: ${error.toString()}';
-              });
-              print('$page: ${error.toString()}');
-            },
-            onViewCreated: (PDFViewController pdfViewController) {
-              _controller.complete(pdfViewController);
-            },
-            onLinkHandler: (String? uri) {
-              print('goto uri: $uri');
-            },
-            onPageChanged: (int? page, int? total) {
-              print('page change: $page/$total');
-              setState(() {
-                currentPage = page;
-              });
-            },
-          ),
-          errorMessage.isEmpty
-              ? !isReady
-                  ? Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : Container()
-              : Center(
-                  child: Text(errorMessage),
-                )
-        ],
-      ),
-      floatingActionButton: FutureBuilder<PDFViewController>(
-        future: _controller.future,
-        builder: (context, AsyncSnapshot<PDFViewController> snapshot) {
-          if (snapshot.hasData) {
-            return FloatingActionButton.extended(
-              label: Text("Go to ${pages! ~/ 2}"),
-              onPressed: () async {
-                await snapshot.data!.setPage(pages! ~/ 2);
-              },
-            );
-          }
-
-          return Container();
-        },
-      ),
-    );
+    Image.memory(
+      keyToDataMap[word]!,
+      fit: BoxFit.cover,
+    )
+        : BumbleBeeRemoteVideo(downurl: keyToDownloadURLMap[word]!,)))
+        : BumbleBeeRemoteVideo(downurl: keyToDownloadURLMap[word]!,);
   }
 }
+
