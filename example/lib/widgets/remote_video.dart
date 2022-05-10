@@ -9,10 +9,10 @@ class BumbleBeeRemoteVideo extends StatefulWidget {
       : super(key: key);
   final String downurl;
   @override
-  BumbleBeeRemoteVideoState createState() => BumbleBeeRemoteVideoState();
+  _BumbleBeeRemoteVideoState createState() => _BumbleBeeRemoteVideoState();
 }
 
-class BumbleBeeRemoteVideoState extends State<BumbleBeeRemoteVideo> {
+class _BumbleBeeRemoteVideoState extends State<BumbleBeeRemoteVideo> {
   late VideoPlayerController _controller;
 
   @override
