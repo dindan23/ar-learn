@@ -10,8 +10,12 @@ class PDFApi {
     final dir = await getApplicationDocumentsDirectory();
 
     final file = File('${dir.path}/$filename');
+    if(file.existsSync()) {
+      print("File already exists. Don't store it again.");
+      return file;
+    }
     print("ABSOLUTE");
-    print(dir.path);
+    print('${dir.path}/$filename');
     List<int> intBytes = new List.from(bytes);
     await file.writeAsBytes(intBytes, flush: true);
     return file;
