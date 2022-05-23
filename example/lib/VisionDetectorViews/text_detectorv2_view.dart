@@ -24,6 +24,10 @@ class TextDetectorV2View extends StatefulWidget {
 
 final CollectionReference collectionRef = FirebaseFirestore.instance
     .collection('Content_User_C4U5KdZ9YVOPOfJLP23daGsOsEH2');
+final CollectionReference collectionRef3 = FirebaseFirestore.instance
+    .collection('Content_User_gTQLJKbgLUPOhFRw5579ev4geO82');
+final CollectionReference collectionRefIntegral = FirebaseFirestore.instance
+    .collection('Content_User_9F85Fl7sW4XXtE8vBfpecDgwvmr1');
 
 Map<String, Uint8List> keyToDataMap = {};
 Map<String, String> keyToLinkMap = {};
@@ -31,10 +35,15 @@ Map<String, String> keyToDownloadURLMap = {};
 
 class DatabaseServices {
   List rawDatabase = [];
+  List rawDatabase2 = [];
 
   SetPackage(String pck) async {
+    keyToDataMap = {};
+    keyToLinkMap = {};
+    keyToDownloadURLMap = {};
+
     // TODO: Package-Auswahl mit If-Abfrage oder Alternativweg
-    if (pck == 'A') {
+    if (pck == 'MT-1') {
       //to get data from a single/particular document alone.
       //var temp = await collectionRef.doc("<your document ID here>").get();
 
@@ -59,7 +68,7 @@ class DatabaseServices {
           ref.getDownloadURL().then((durl) {
             keyToDownloadURLMap.putIfAbsent(keyword, () => durl);
           });
-        } else {
+        } else if (link.toString().endsWith('.pdf') || link.toString().endsWith('.PNG')) {
           ref.getData(10000000).then((data) {
             keyToDataMap.putIfAbsent(keyword, () => data!);
             if (link.toString().endsWith("pdf")) {
@@ -67,9 +76,53 @@ class DatabaseServices {
               PDFApi.storeFile(link, data!);
             }
           });
+        } else {
+          print("Link file ending is not supported (or link was empty).");
+        }
+      });
+    } else {
+      //to get data from a single/particular document alone.
+      //var temp = await collectionRef.doc("<your document ID here>").get();
+
+      // to get data from all documents sequentially
+      await collectionRef3.get().then((querySnapshot) {
+        print("got results for collectionref3");
+
+        for (var result in querySnapshot.docs) {
+          print("results for colref3");
+          print(result.data());
+          rawDatabase2.add(result.data());
+        }
+      });
+      rawDatabase2.forEach((element) {
+        var keyword = element["Keyword"];
+        var link = element["Link"];
+        keyToLinkMap.putIfAbsent(keyword, () => link);
+
+        print("downloaded database element: ");
+        print(element);
+
+        firebase_storage.Reference ref =
+            firebase_storage.FirebaseStorage.instance.ref().child(link);
+        if (link.toString().endsWith('.mp4')) {
+          print("There is a video file for " + keyword);
+          ref.getDownloadURL().then((durl) {
+            keyToDownloadURLMap.putIfAbsent(keyword, () => durl);
+          });
+        } else if (link.toString().endsWith('.pdf') || link.toString().endsWith('.PNG')) {
+          ref.getData(10000000).then((data) {
+            keyToDataMap.putIfAbsent(keyword, () => data!);
+            if (link.toString().endsWith("pdf")) {
+              print("There is a pdf file for " + keyword);
+              PDFApi.storeFile(link, data!);
+            }
+          });
+        } else {
+          print("Link file ending is not supported (or link was empty).");
         }
       });
     }
+
     ;
   }
 }
@@ -105,29 +158,27 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   Widget build(BuildContext context) {
     Future<void> _showMyDialog(String word, String definition) async {
       return showDialog<void>(
-        context: context,
-        barrierDismissible: true, // if false: user must tap button
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(word),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  getWidgetForFileEnding(word),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Ok'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+          context: context,
+          barrierDismissible: true, // if false: user must tap button
+          builder: (BuildContext context) {
+            return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: EdgeInsets.all(20),
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Flexible(flex: 5, child: getWidgetForFileEnding(word)),
+                      Flexible(
+                          flex: 1,
+                          child: TextButton(
+                            child: const Text('Ok'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ))
+                    ]));
+          });
     }
 
     final mediaQueryData = MediaQuery.of(context);
@@ -272,28 +323,31 @@ class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   Widget getWidgetForFileEnding(String word) {
     return keyToLinkMap.containsKey(word)
         ? (keyToLinkMap[word]!.endsWith('pdf')
-        ? TextButton(
-        child: Text("Open PDF"),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  PDFScreen(path: keyToDataMap[word]!),
-            ),
-          );
-        })
-        : (keyToLinkMap[word]!.endsWith('PNG')
-        ?
+            ? TextButton(
+                child: Text("Open PDF"),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PDFScreen(path: keyToDataMap[word]!),
+                    ),
+                  );
+                })
+            : (keyToLinkMap[word]!.endsWith('PNG')
+                ?
 
-    //Image.network(definition),
+                //Image.network(definition),
 
-    Image.memory(
-      keyToDataMap[word]!,
-      fit: BoxFit.cover,
-    )
-        : BumbleBeeRemoteVideo(downurl: keyToDownloadURLMap[word]!,)))
-        : BumbleBeeRemoteVideo(downurl: keyToDownloadURLMap[word]!,);
+                Image.memory(
+                    keyToDataMap[word]!,
+                    fit: BoxFit.cover,
+                  )
+                : (keyToLinkMap[word]!.endsWith('mp4')
+                    ? BumbleBeeRemoteVideo(
+                        downurl: keyToDownloadURLMap[word]!,
+                      )
+                    : Text("Not supported."))))
+        : Text("Not supported.");
   }
 }
-

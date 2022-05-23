@@ -74,7 +74,7 @@ class Home extends StatelessWidget {
 
 
                   DropdownButton<String>(
-                    items: <String>['A', 'B', 'C', 'D'].map((String value) {
+                    items: <String>['MT-1', 'LinAlg-3', 'EIP-1', 'DigMed'].map((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Text(value),
