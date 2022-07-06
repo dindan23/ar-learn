@@ -33,6 +33,7 @@ Map<String, Uint8List> keyToDataMap = {};
 Map<String, String> keyToLinkMap = {};
 Map<String, String> keyToDownloadURLMap = {};
 
+/*
 class DatabaseServices {
   List rawDatabase = [];
   List rawDatabase2 = [];
@@ -126,6 +127,7 @@ class DatabaseServices {
     ;
   }
 }
+*/
 
 class _TextDetectorViewV2State extends State<TextDetectorV2View> {
   MyService _myService = MyService();
